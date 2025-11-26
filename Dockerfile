@@ -8,9 +8,9 @@ FROM alpine:latest as build
 # Actualizar el índice de paquetes de Alpine
 RUN apk update
 
-# Instalar OpenJDK 17 necesario para compilar código Java/Spring Boot
+# Instalar OpenJDK 21 necesario para compilar código Java/Spring Boot
 # Alpine usa 'apk' como gestor de paquetes (equivalente a apt/yum)
-RUN apk add openjdk17
+RUN apk add openjdk21
 
 # Copiar TODO el código fuente del proyecto al contenedor
 # Primer '.' = origen (directorio actual del host)
