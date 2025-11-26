@@ -1,0 +1,73 @@
+@startuml
+participant Client
+participant MutantController
+participant MutantService
+participant DnaRecordRepository
+participant MutantDetector
+participant Database
+
+Client -> MutantController: POST /mutant con JSON(dna)
+activate MutantController
+
+MutantController -> MutantService: analyzeDnaAndSave(dna)
+activate MutantService
+
+' --- Lógica de Servicio ---
+MutantService -> MutantService: calculateDnaHash(dna)
+MutantService -> DnaRecordRepository: findByDnaHash(hash)
+activate DnaRecordRepository
+DnaRecordRepository -> Database: SELECT * FROM dna_records ...
+activate Database
+
+Database --> DnaRecordRepository: Optional<DnaRecord>
+deactivate Database
+DnaRecordRepository --> MutantService: Optional<DnaRecord>
+deactivate DnaRecordRepository
+
+alt ADN ya existe en la BD (Cache Hit)
+    ' El servicio ya tiene el resultado
+else ADN es nuevo (Cache Miss)
+    
+    MutantService -> MutantDetector: isMutant(dna)
+    activate MutantDetector
+    
+    note over MutantDetector: 1. Valida y crea la matriz char[][]
+    
+    loop Para cada celda (row, col)
+        note over MutantDetector: 2. Busca secuencias (H, V, Diagonales)
+        alt Si encuentra una secuencia
+            note over MutantDetector: 3. sequencesCount++
+            alt Si sequencesCount >= 2
+                note over MutantDetector: 4. ¡Terminación Anticipada!
+                MutantDetector --> MutantService: return true
+                ' En PlantUML visualizamos el retorno, la lógica de código rompería el bucle aquí
+                deactivate MutantDetector
+            end
+        end
+    end
+    
+    ' Este retorno ocurre si el bucle termina sin encontrar 2 secuencias
+    MutantDetector --> MutantService: return false
+    deactivate MutantDetector
+    
+    MutantService -> DnaRecordRepository: save(new DnaRecord)
+    activate DnaRecordRepository
+    DnaRecordRepository -> Database: INSERT INTO ...
+    activate Database
+    Database --> DnaRecordRepository: DnaRecord guardado
+    deactivate Database
+    DnaRecordRepository --> MutantService: DnaRecord guardado
+    deactivate DnaRecordRepository
+end
+
+MutantService --> MutantController: return boolean isMutant
+deactivate MutantService
+
+' --- Decisión Final del Controlador ---
+alt Resultado es mutante
+    MutantController -> Client: HTTP 200 OK
+else Resultado es humano
+    MutantController -> Client: HTTP 403 Forbidden
+end
+deactivate MutantController
+@enduml
