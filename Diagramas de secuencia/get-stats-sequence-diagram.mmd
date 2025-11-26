@@ -1,0 +1,37 @@
+sequenceDiagram
+    participant Client
+    participant MutantController
+    participant StatsService
+    participant DnaRecordRepository
+    participant Database
+
+    Client->>+MutantController: GET /stats
+    activate MutantController
+    
+    MutantController->>+StatsService: getStats()
+    activate StatsService
+    
+    StatsService->>+DnaRecordRepository: countByIsMutant(true)
+    activate DnaRecordRepository
+    DnaRecordRepository->>+Database: SELECT COUNT(*) WHERE is_mutant = true
+    activate Database
+    Database-->>DnaRecordRepository: mutantCount
+    deactivate Database
+    DnaRecordRepository-->>StatsService: mutantCount
+    deactivate DnaRecordRepository
+
+    StatsService->>+DnaRecordRepository: countByIsMutant(false)
+    activate DnaRecordRepository
+    DnaRecordRepository->>+Database: SELECT COUNT(*) WHERE is_mutant = false
+    activate Database
+    Database-->>DnaRecordRepository: humanCount
+    deactivate Database
+    DnaRecordRepository-->>StatsService: humanCount
+    deactivate DnaRecordRepository
+
+    StatsService->>StatsService: Calcular ratio
+    StatsService-->>MutantController: return StatsResponse DTO
+    deactivate StatsService
+
+    MutantController-->>-Client: HTTP 200 OK con JSON(stats)
+    deactivate MutantController
